@@ -1,0 +1,63 @@
+services:
+  redis-stack:
+    # IMAGE SELECTION:
+    # Use redis/redis-stack for development (includes RedisInsight UI)
+    image: redis/redis-stack:latest
+    # For production, you might switch to redis/redis-stack-server:latest
+    # If using redis/redis-stack-server, RedisInsight is NOT included,
+    # so the 8001 port mapping becomes irrelevant for that image.
+    # image: redis/redis-stack-server:latest
+
+    container_name: redis-stack # Matches --name redis-stack
+
+    ports:
+      # Host Port : Container Port
+      # Allows accessing Redis from your host machine
+      - "${REDIS_HOST_PORT:-6379}:6379"
+      # Allows accessing RedisInsight UI from your host browser
+      # Only relevant if using redis/redis-stack image
+      - "${REDISINSIGHT_HOST_PORT:-8001}:8001"
+
+    environment:
+      # To set a password for Redis (recommended)
+      # The value after ':-' is a default if the shell variable is not set.
+      # Example: --requirepass mysecretpassword
+      # Example: --requirepass mysecretpassword --appendonly yes
+      REDIS_ARGS: ${REDIS_ARGS_ENV:---requirepass mypassword}
+
+      # Optional: Pass arguments to specific Redis Stack modules
+      # REDISEARCH_ARGS: ${REDISEARCH_ARGS_ENV:-}
+      # REDISJSON_ARGS: ${REDISJSON_ARGS_ENV:-}
+      # REDISGRAPH_ARGS: ${REDISGRAPH_ARGS_ENV:-}
+      # REDISTIMESERIES_ARGS: ${REDISTIMESERIES_ARGS_ENV:-RETENTION_POLICY=20}
+      # REDISBLOOM_ARGS: ${REDISBLOOM_ARGS_ENV:-}
+
+    volumes:
+      # OPTION 1: Named Volume for Data Persistence (Recommended)
+      # Docker manages the volume. Data persists even if the container is removed.
+      - redis_stack_data:/data
+      # To use this, make sure the 'volumes:' block at the end of this file is uncommented.
+
+      # OPTION 2: Bind Mount for Data Persistence
+      # Maps a directory on your host to /data inside the container.
+      # Create ./redis-data directory in the same folder as this docker-compose.yml file.
+      # - ./redis-data:/data
+
+      # OPTION 3: Using a Custom Configuration File
+      # Mount a local .conf file into the container.
+      # Create ./local-redis-stack.conf in the same folder as this docker-compose.yml file.
+      # - ./local-redis-stack.conf:/redis-stack.conf
+      # If using a custom config file, you might not need REDIS_ARGS,
+      # as settings like 'requirepass' would be in your .conf file.
+
+    restart: unless-stopped # Automatically restart if it crashes
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "-h", "localhost", "-p", "6379", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# Only needed if you choose OPTION 1 for volumes (Named Volume)
+volumes:
+  redis_stack_data:
